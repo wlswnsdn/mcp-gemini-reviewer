@@ -261,17 +261,32 @@ class WorkflowManager:
         """Check if review found significant issues worth improving."""
         if not review_result.get("success"):
             return False
-            
+        
+        # Check structured review for priority issues
+        structured_review = review_result.get("structured_review", {})
+        issues_by_priority = structured_review.get("issues_by_priority", {})
+        
+        # Consider CRITICAL and HIGH priority issues as significant
+        critical_issues = issues_by_priority.get("critical", [])
+        high_issues = issues_by_priority.get("high", [])
+        
+        if critical_issues or high_issues:
+            return True
+        
+        # Fallback to text-based detection if structured parsing failed
         review_text = review_result.get("review", "").lower()
         
         # Keywords indicating significant issues
-        issue_keywords = [
-            "security", "vulnerability", "unsafe", "injection",
-            "error", "bug", "issue", "problem", "incorrect",
-            "improve", "better", "optimize", "refactor"
+        critical_keywords = [
+            "🔴", "critical", "security", "vulnerability", "unsafe", "injection",
+            "crash", "corruption", "data loss"
+        ]
+        high_keywords = [
+            "🟡", "high", "performance", "error", "bug", "logic error",
+            "maintainability"
         ]
         
-        return any(keyword in review_text for keyword in issue_keywords)
+        return any(keyword in review_text for keyword in critical_keywords + high_keywords)
     
     def _generate_workflow_id(self) -> str:
         """Generate unique workflow ID."""

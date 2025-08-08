@@ -59,13 +59,17 @@ class GeminiClient:
                 f"```{language if language else ''}",
                 code,
                 "```",
-                "\n\nPlease provide:",
-                "1. Overall assessment",
-                "2. Strengths of the code",
-                "3. Issues and concerns (prioritized by severity)",
-                "4. Specific improvement suggestions with code examples",
-                "5. Security vulnerabilities (if any)",
-                "6. Performance considerations"
+                "\n\nPlease provide a comprehensive review with the following structure:",
+                "1. **Overall Assessment** - Brief summary of code quality",
+                "2. **Strengths** - What the code does well",
+                "3. **Issues by Priority** - Categorize all issues with priority levels:",
+                "   - 🔴 **CRITICAL**: Security vulnerabilities, data corruption risks, system crashes",
+                "   - 🟡 **HIGH**: Performance issues, maintainability problems, logic errors", 
+                "   - 🟠 **MEDIUM**: Code style issues, minor inefficiencies, missing validations",
+                "   - 🟢 **LOW**: Documentation, naming improvements, minor optimizations",
+                "4. **Specific Improvement Suggestions** - Actionable recommendations with code examples",
+                "5. **Security Analysis** - Dedicated security review",
+                "6. **Performance Considerations** - Performance-related observations"
             ])
             
             prompt = "\n".join(prompt_parts)
@@ -180,11 +184,16 @@ Please provide:
         Returns:
             Structured review data
         """
-        # Simple parsing - in production, could use more sophisticated parsing
+        # Enhanced parsing with priority levels
         sections = {
             "overall_assessment": "",
             "strengths": [],
-            "issues": [],
+            "issues_by_priority": {
+                "critical": [],
+                "high": [],
+                "medium": [], 
+                "low": []
+            },
             "improvements": [],
             "security_concerns": [],
             "performance_notes": []
@@ -193,6 +202,8 @@ Please provide:
         current_section = None
         lines = review_text.split('\n')
         
+        current_priority = None
+        
         for line in lines:
             line_lower = line.lower().strip()
             
@@ -200,7 +211,7 @@ Please provide:
                 current_section = 'overall_assessment'
             elif 'strength' in line_lower:
                 current_section = 'strengths'
-            elif 'issue' in line_lower or 'concern' in line_lower:
+            elif 'issues by priority' in line_lower or 'issue' in line_lower:
                 current_section = 'issues'
             elif 'improvement' in line_lower or 'suggestion' in line_lower:
                 current_section = 'improvements'
@@ -208,10 +219,24 @@ Please provide:
                 current_section = 'security_concerns'
             elif 'performance' in line_lower:
                 current_section = 'performance_notes'
+            
+            # Check for priority levels in issues section
+            if current_section == 'issues':
+                if '🔴' in line or 'critical' in line_lower:
+                    current_priority = 'critical'
+                elif '🟡' in line or 'high' in line_lower:
+                    current_priority = 'high'
+                elif '🟠' in line or 'medium' in line_lower:
+                    current_priority = 'medium'
+                elif '🟢' in line or 'low' in line_lower:
+                    current_priority = 'low'
+                elif current_priority and line.strip() and line.strip().startswith(('-', '*', '•')):
+                    sections["issues_by_priority"][current_priority].append(line.strip())
+            
             elif current_section and line.strip():
                 if current_section == 'overall_assessment':
                     sections[current_section] += line + '\n'
-                elif line.strip().startswith(('-', '*', '"', '1.', '2.', '3.')):
+                elif line.strip().startswith(('-', '*', '•', '1.', '2.', '3.')):
                     sections[current_section].append(line.strip())
         
         return sections
