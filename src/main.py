@@ -11,6 +11,7 @@ from mcp.types import Tool, TextContent
 import mcp.server.stdio
 
 from config import settings
+from workflow import get_workflow_manager
 
 # Configure logging
 logging.basicConfig(
@@ -131,33 +132,157 @@ async def call_tool(name: str, arguments: Dict[str, Any]) -> List[TextContent]:
     """Handle tool calls."""
     try:
         logger.info(f"Tool called: {name} with arguments: {arguments}")
+        workflow_manager = await get_workflow_manager()
         
         if name == "request_code_implementation":
-            # TODO: Implement in step 6
-            result = f"Code implementation requested: {arguments.get('request')}"
+            # Handle code implementation request
+            result = await workflow_manager.handle_implementation_request(
+                request=arguments.get("request", ""),
+                language=arguments.get("language"),
+                requirements=arguments.get("requirements")
+            )
+            
+            if result["success"]:
+                response_parts = [
+                    f"✅ **코드 구현 완료**",
+                    f"🆔 워크플로우 ID: {result['workflow_id']}",
+                    f"🔤 언어: {result['language']}",
+                    "",
+                    "📝 **최종 코드:**",
+                    "```" + result['language'],
+                    result['final_code'],
+                    "```"
+                ]
+                
+                # Add stage information
+                stages = result.get('stages', {})
+                if 'review' in stages:
+                    response_parts.extend([
+                        "",
+                        "🔍 **리뷰 요약:**",
+                        stages['review'].get('review', '리뷰 세부사항이 없습니다')[:500] + "..."
+                    ])
+                
+                if 'improvement' in stages:
+                    response_parts.extend([
+                        "",
+                        "⚡ **리뷰 피드백을 바탕으로 코드가 개선되었습니다**"
+                    ])
+                
+                return [TextContent(type="text", text="\n".join(response_parts))]
+            else:
+                return [TextContent(
+                    type="text",
+                    text=f"❌ **코드 구현 실패:** {result.get('error', '알 수 없는 오류')}"
+                )]
             
         elif name == "review_code_with_gemini":
-            # TODO: Implement in step 6  
-            result = f"Code review requested for: {arguments.get('language', 'auto-detect')} code"
+            # Handle direct code review
+            code = arguments.get("code", "")
+            if not code:
+                return [TextContent(
+                    type="text",
+                    text="❌ **오류:** 리뷰할 코드가 제공되지 않았습니다"
+                )]
+            
+            # Use workflow manager to handle review
+            from gemini_client import get_gemini_client
+            gemini_client = await get_gemini_client()
+            
+            review_result = await gemini_client.review_code(
+                code=code,
+                language=arguments.get("language"),
+                focus_areas=arguments.get("focus_areas")
+            )
+            
+            if review_result["success"]:
+                response_parts = [
+                    f"🔍 **코드 리뷰 완료**",
+                    f"🔤 언어: {review_result['language']}",
+                    f"📏 코드 길이: {review_result['code_length']}자",
+                    "",
+                    "📋 **리뷰 결과:**",
+                    review_result['review']
+                ]
+                
+                return [TextContent(type="text", text="\n".join(response_parts))]
+            else:
+                return [TextContent(
+                    type="text",
+                    text=f"❌ **리뷰 실패:** {review_result.get('error', '알 수 없는 오류')}"
+                )]
             
         elif name == "improve_code_with_feedback":
-            # TODO: Implement in step 6
-            result = "Code improvement requested based on feedback"
+            # Handle code improvement
+            original_code = arguments.get("original_code", "")
+            feedback = arguments.get("feedback", "")
+            
+            if not original_code or not feedback:
+                return [TextContent(
+                    type="text",
+                    text="❌ **오류:** 원본 코드와 피드백이 모두 필요합니다"
+                )]
+            
+            from claude_client import get_claude_client
+            claude_client = await get_claude_client()
+            
+            improvement_result = await claude_client.improve_code(
+                original_code=original_code,
+                feedback=feedback,
+                language=arguments.get("language")
+            )
+            
+            if improvement_result["success"]:
+                response_parts = [
+                    "⚡ **코드 개선 완료**",
+                    f"🔤 언어: {improvement_result['language']}",
+                    "",
+                    "📝 **개선된 코드:**",
+                    "```" + improvement_result['language'],
+                    improvement_result['improved_code'],
+                    "```"
+                ]
+                
+                return [TextContent(type="text", text="\n".join(response_parts))]
+            else:
+                return [TextContent(
+                    type="text",
+                    text=f"❌ **개선 실패:** {improvement_result.get('error', '알 수 없는 오류')}"
+                )]
             
         elif name == "get_review_history":
-            # TODO: Implement in step 6
-            result = f"Review history requested (limit: {arguments.get('limit', 10)})"
+            # Get review history
+            limit = arguments.get("limit", 10)
+            history = workflow_manager.get_history(limit)
+            
+            if not history:
+                return [TextContent(
+                    type="text",
+                    text="📊 **리뷰 히스토리:** 기록이 없습니다"
+                )]
+            
+            response_parts = [f"📊 **리뷰 히스토리 (최근 {len(history)}개 항목):**", ""]
+            
+            for i, entry in enumerate(reversed(history), 1):
+                status = "✅" if entry['success'] else "❌"
+                response_parts.append(
+                    f"{i}. {status} [{entry['timestamp'][:19]}] "
+                    f"{entry.get('language', '알 수 없음')} - {entry['request'][:50]}..."
+                )
+            
+            return [TextContent(type="text", text="\n".join(response_parts))]
             
         else:
-            result = f"Unknown tool: {name}"
+            return [TextContent(
+                type="text",
+                text=f"❌ **알 수 없는 도구:** {name}"
+            )]
             
-        return [TextContent(type="text", text=result)]
-        
     except Exception as e:
         logger.error(f"Error in tool {name}: {str(e)}")
         return [TextContent(
             type="text", 
-            text=f"Error executing tool {name}: {str(e)}"
+            text=f"❌ **도구 실행 오류 {name}:** {str(e)}"
         )]
 
 
