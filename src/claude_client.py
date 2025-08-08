@@ -17,6 +17,7 @@ class ClaudeClient:
         """Initialize Claude client with API key from settings."""
         self.client = AsyncAnthropic(api_key=settings.anthropic_api_key)
         self.model = settings.claude_model
+        self.fallback_model = getattr(settings, 'claude_model_fast', 'claude-3-5-sonnet-20241022')
         self.max_tokens = settings.max_tokens
         self.temperature = settings.temperature
         
@@ -57,19 +58,33 @@ class ClaudeClient:
             
             prompt = "\n".join(prompt_parts)
             
-            # Call Claude API
+            # Call Claude API with fallback
             logger.info(f"Generating code with Claude ({self.model})")
-            response = await self.client.messages.create(
-                model=self.model,
-                max_tokens=self.max_tokens,
-                temperature=self.temperature,
-                messages=[
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
-                ]
-            )
+            try:
+                response = await self.client.messages.create(
+                    model=self.model,
+                    max_tokens=self.max_tokens,
+                    temperature=self.temperature,
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ]
+                )
+            except anthropic.RateLimitError as e:
+                logger.warning(f"Rate limit reached for {self.model}, falling back to {self.fallback_model}")
+                response = await self.client.messages.create(
+                    model=self.fallback_model,
+                    max_tokens=self.max_tokens,
+                    temperature=self.temperature,
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ]
+                )
             
             # Extract the generated code
             generated_content = response.content[0].text
