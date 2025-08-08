@@ -3,7 +3,12 @@
 import asyncio
 import json
 import logging
+import sys
+from pathlib import Path
 from typing import Any, Dict, List
+
+# Add parent directory to Python path to import config
+sys.path.append(str(Path(__file__).parent.parent))
 
 from mcp.server import Server
 from mcp.server.models import InitializationOptions
@@ -286,16 +291,6 @@ async def call_tool(name: str, arguments: Dict[str, Any]) -> List[TextContent]:
         )]
 
 
-@app.initialization_options()
-async def get_initialization_options() -> InitializationOptions:
-    """Return server initialization options."""
-    return InitializationOptions(
-        server_name=settings.mcp_server_name,
-        server_version=settings.mcp_server_version,
-        capabilities={}
-    )
-
-
 async def main():
     """Run the MCP server."""
     logger.info(f"Starting {settings.mcp_server_name} v{settings.mcp_server_version}")
@@ -307,7 +302,8 @@ async def main():
             write_stream,
             InitializationOptions(
                 server_name=settings.mcp_server_name,
-                server_version=settings.mcp_server_version
+                server_version=settings.mcp_server_version,
+                capabilities={}
             )
         )
 
