@@ -46,9 +46,9 @@ class GeminiClient:
             
             # Build the review prompt
             prompt_parts = [
-                "You are an expert code reviewer. Please provide a thorough review of the following code.",
-                f"\nProgramming Language: {language if language else 'auto-detect'}",
-                "\nFocus on the following areas:"
+                "당신은 전문 코드 리뷰어입니다. 다음 코드에 대해 철저한 리뷰를 제공해주세요.",
+                f"\n프로그래밍 언어: {language if language else '자동 감지'}",
+                "\n다음 영역에 집중해주세요:"
             ]
             
             for area in focus_areas:
@@ -59,17 +59,17 @@ class GeminiClient:
                 f"```{language if language else ''}",
                 code,
                 "```",
-                "\n\nPlease provide a comprehensive review with the following structure:",
-                "1. **Overall Assessment** - Brief summary of code quality",
-                "2. **Strengths** - What the code does well",
-                "3. **Issues by Priority** - Categorize all issues with priority levels:",
-                "   - 🔴 **CRITICAL**: Security vulnerabilities, data corruption risks, system crashes",
-                "   - 🟡 **HIGH**: Performance issues, maintainability problems, logic errors", 
-                "   - 🟠 **MEDIUM**: Code style issues, minor inefficiencies, missing validations",
-                "   - 🟢 **LOW**: Documentation, naming improvements, minor optimizations",
-                "4. **Specific Improvement Suggestions** - Actionable recommendations with code examples",
-                "5. **Security Analysis** - Dedicated security review",
-                "6. **Performance Considerations** - Performance-related observations"
+                "\n\n다음 구조로 포괄적인 리뷰를 제공해주세요:",
+                "1. **전반적 평가** - 코드 품질에 대한 간략한 요약",
+                "2. **강점** - 코드가 잘 구현된 부분",
+                "3. **우선순위별 이슈** - 모든 이슈를 우선순위별로 분류:",
+                "   - 🔴 **치명적**: 보안 취약점, 데이터 손상 위험, 시스템 크래시",
+                "   - 🟡 **높음**: 성능 문제, 유지보수성 문제, 로직 오류", 
+                "   - 🟠 **중간**: 코드 스타일 문제, 사소한 비효율성, 누락된 검증",
+                "   - 🟢 **낮음**: 문서화, 네이밍 개선, 소소한 최적화",
+                "4. **구체적 개선 제안** - 코드 예제와 함께 실행 가능한 권장사항",
+                "5. **보안 분석** - 전용 보안 리뷰",
+                "6. **성능 고려사항** - 성능 관련 관찰 사항"
             ])
             
             prompt = "\n".join(prompt_parts)
@@ -123,23 +123,23 @@ class GeminiClient:
             Dict containing comparison results
         """
         try:
-            prompt = f"""Compare these two code implementations and analyze the improvements made.
+            prompt = f"""이 두 코드 구현을 비교하고 개선 사항을 분석해주세요.
 
-Original Code:
+원본 코드:
 ```{language or ''}
 {original_code}
 ```
 
-Improved Code:
+개선된 코드:
 ```{language or ''}
 {improved_code}
 ```
 
-Please provide:
-1. Summary of changes made
-2. How each change addresses the review feedback
-3. Any remaining issues or suggestions
-4. Overall improvement assessment (1-10 scale)
+다음을 제공해주세요:
+1. 변경 사항 요약
+2. 각 변경이 리뷰 피드백을 어떻게 해결하는지
+3. 남은 문제나 제안 사항
+4. 전반적인 개선도 평가 (1-10점 척도)
 """
             
             logger.info(f"Comparing implementations with Gemini ({self.model_name})")
@@ -184,18 +184,18 @@ Please provide:
         try:
             # Build the improvement prompt
             prompt_parts = [
-                "You are an expert code improvement consultant. Based on the code review provided, generate specific, actionable improvement suggestions.",
-                f"\nOriginal Code:",
+                "당신은 전문 코드 개선 컨설턴트입니다. 제공된 코드 리뷰를 바탕으로 구체적이고 실행 가능한 개선 제안을 생성해주세요.",
+                f"\n원본 코드:",
                 f"```{language or ''}",
                 code,
                 "```",
-                f"\nCode Review:",
+                f"\n코드 리뷰:",
                 review,
-                "\nPlease provide:",
-                "1. **Priority-based Improvement Plan** - Focus on CRITICAL and HIGH priority issues first",
-                "2. **Specific Code Changes** - Exact code snippets that should be modified",
-                "3. **Implementation Steps** - Step-by-step guide for applying improvements",
-                "4. **Validation Methods** - How to verify the improvements work correctly"
+                "\n다음을 제공해주세요:",
+                "1. **우선순위 기반 개선 계획** - 치명적 및 높음 우선순위 이슈에 먼저 집중",
+                "2. **구체적 코드 변경** - 수정해야 할 정확한 코드 스니펫",
+                "3. **구현 단계** - 개선 사항 적용을 위한 단계별 가이드",
+                "4. **검증 방법** - 개선 사항이 올바르게 작동하는지 확인하는 방법"
             ]
             
             if requirements:
@@ -205,8 +205,8 @@ Please provide:
                 ])
                 
             prompt_parts.extend([
-                "\nFormat your response with clear sections and provide concrete, implementable solutions.",
-                "Focus on the most impactful improvements that address security, performance, and maintainability concerns."
+                "\n명확한 섹션으로 응답을 구성하고 구체적이고 구현 가능한 솔루션을 제공해주세요.",
+                "보안, 성능, 유지보수성 문제를 해결하는 가장 영향력 있는 개선 사항에 집중해주세요."
             ])
             
             prompt = "\n".join(prompt_parts)
