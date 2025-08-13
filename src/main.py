@@ -1,7 +1,6 @@
 """Main entry point for the Gemini Review MCP server."""
 
 import asyncio
-import json
 import logging
 import sys
 from pathlib import Path
@@ -9,6 +8,12 @@ from typing import Any, Dict, List
 
 # Add parent directory to Python path to import config
 sys.path.append(str(Path(__file__).parent.parent))
+
+# Debug: Print startup info
+print("=== Gemini Review MCP Server Starting ===", file=sys.stderr)
+print(f"Python path: {sys.executable}", file=sys.stderr)
+print(f"Working directory: {Path.cwd()}", file=sys.stderr)
+print(f"Script path: {Path(__file__).resolve()}", file=sys.stderr)
 
 from mcp.server import Server
 from mcp.server.models import InitializationOptions

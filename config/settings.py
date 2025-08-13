@@ -2,9 +2,22 @@
 
 import os
 from pathlib import Path
-from typing import Optional
 from pydantic_settings import BaseSettings
 from pydantic import Field
+
+# Load environment variables from .env file
+try:
+    from dotenv import load_dotenv
+    # Get the project root directory
+    project_root = Path(__file__).parent.parent
+    dotenv_path = project_root / ".env"
+    if dotenv_path.exists():
+        load_dotenv(dotenv_path)
+        print(f"Loaded .env from: {dotenv_path}")
+    else:
+        print(f"No .env file found at: {dotenv_path}")
+except ImportError:
+    print("python-dotenv not available, using system environment variables only")
 
 
 class Settings(BaseSettings):
@@ -56,4 +69,12 @@ class Settings(BaseSettings):
 
 
 # Create global settings instance
-settings = Settings()
+try:
+    settings = Settings()
+    # Validate critical settings
+    if not settings.gemini_api_key or settings.gemini_api_key == "your_gemini_api_key_here":
+        raise ValueError("GEMINI_API_KEY is not set or is using default placeholder value")
+    print(f"Settings loaded successfully - Gemini model: {settings.gemini_model}")
+except Exception as e:
+    print(f"Error loading settings: {e}")
+    raise
