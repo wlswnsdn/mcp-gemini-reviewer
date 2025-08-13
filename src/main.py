@@ -36,7 +36,7 @@ app = Server(settings.mcp_server_name)
 
 # Define tools
 ENHANCE_CODE_TOOL = Tool(
-    name="enhance_code_with_review",
+    name="review",
     description="Enhance code with Gemini AI review and improvement suggestions",
     inputSchema={
         "type": "object",
@@ -67,7 +67,7 @@ ENHANCE_CODE_TOOL = Tool(
 )
 
 REVIEW_CODE_TOOL = Tool(
-    name="review_code_quality",
+    name="analyze",
     description="Review code quality with priority-based analysis using Gemini AI",
     inputSchema={
         "type": "object",
@@ -93,7 +93,7 @@ REVIEW_CODE_TOOL = Tool(
 )
 
 GET_HISTORY_TOOL = Tool(
-    name="get_review_history",
+    name="history",
     description="Get the history of code reviews and improvements",
     inputSchema={
         "type": "object",
@@ -125,7 +125,7 @@ async def call_tool(name: str, arguments: Dict[str, Any]) -> List[TextContent]:
         logger.info(f"Tool called: {name} with arguments: {arguments}")
         workflow_manager = await get_workflow_manager()
         
-        if name == "enhance_code_with_review":
+        if name == "review":
             # Handle code enhancement request
             code = arguments.get("code", "")
             if not code:
@@ -174,7 +174,7 @@ async def call_tool(name: str, arguments: Dict[str, Any]) -> List[TextContent]:
                     text=f"❌ **코드 개선 분석 실패:** {result.get('error', '알 수 없는 오류')}"
                 )]
             
-        elif name == "review_code_quality":
+        elif name == "analyze":
             # Handle direct code review
             code = arguments.get("code", "")
             if not code:
@@ -233,7 +233,7 @@ async def call_tool(name: str, arguments: Dict[str, Any]) -> List[TextContent]:
                     text=f"❌ **리뷰 실패:** {review_result.get('error', '알 수 없는 오류')}"
                 )]
             
-        elif name == "get_review_history":
+        elif name == "history":
             # Get review history
             limit = arguments.get("limit", 10)
             history = workflow_manager.get_history(limit)
