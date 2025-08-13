@@ -179,10 +179,6 @@ class WorkflowManager:
             "리뷰", "검토", "확인", "분석", "평가", "체크", "검사", "피드백", "검증"
         ]
         
-        # Question keywords
-        question_keywords = [
-            "무엇", "설명", "알려줘", "어떻게", "왜", "궁금", "질문", "의문"
-        ]
         
         # Check for code blocks in message (indicates review request)
         if "```" in message or re.search(r'(def |class |function |import |const |let |var )', message):
