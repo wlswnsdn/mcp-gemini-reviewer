@@ -3,11 +3,9 @@
 import logging
 from typing import Dict, Any, Optional, List
 from datetime import datetime
-import json
 import re
 
 from gemini_client import get_gemini_client
-from config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -105,10 +103,21 @@ class WorkflowManager:
             result["stages"]["review"] = review_result
             detected_language = review_result.get("language", language or "unknown")
             
-            # Stage 2: Mark if improvement suggestions are recommended
+            # Stage 2: Generate improvement suggestions if significant issues found
             if self._has_significant_issues(review_result):
-                logger.info("Stage 2: Significant issues found - improvement recommended")
-                result["improvement_suggestions"] = "Based on the review, consider addressing the CRITICAL and HIGH priority issues identified."
+                logger.info("Stage 2: Generating improvement suggestions")
+                suggestions_result = await gemini_client.generate_improvement_suggestions(
+                    code=code,
+                    review=review_result["review"],
+                    language=detected_language,
+                    requirements=requirements
+                )
+                
+                if suggestions_result["success"]:
+                    result["stages"]["suggestions"] = suggestions_result
+                    result["improvement_suggestions"] = suggestions_result["suggestions"]
+                else:
+                    result["improvement_suggestions"] = "개선 제안 생성에 실패했지만, CRITICAL과 HIGH 우선순위 이슈를 우선적으로 해결하세요."
             
             # Prepare final result
             result["success"] = True
