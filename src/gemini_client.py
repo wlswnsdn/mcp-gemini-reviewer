@@ -66,10 +66,8 @@ class GeminiClient:
                 "   - 🔴 **치명적**: 보안 취약점, 데이터 손상 위험, 시스템 크래시",
                 "   - 🟡 **높음**: 성능 문제, 유지보수성 문제, 로직 오류", 
                 "   - 🟠 **중간**: 코드 스타일 문제, 사소한 비효율성, 누락된 검증",
-                "   - 🟢 **낮음**: 문서화, 네이밍 개선, 소소한 최적화",
-                "4. **구체적 개선 제안** - 코드 예제와 함께 실행 가능한 권장사항",
-                "5. **보안 분석** - 전용 보안 리뷰",
-                "6. **성능 고려사항** - 성능 관련 관찰 사항"
+                "4. **구체적 개선 제안** - 최대 2개의 주요 개선사항만 코드 예제와 함께 제공",
+                "5. **성능 고려사항** - 주요 성능 이슈만 간단히"
             ])
             
             prompt = "\n".join(prompt_parts)
@@ -269,11 +267,9 @@ class GeminiClient:
             "issues_by_priority": {
                 "critical": [],
                 "high": [],
-                "medium": [], 
-                "low": []
+                "medium": []
             },
             "improvements": [],
-            "security_concerns": [],
             "performance_notes": []
         }
         
@@ -293,8 +289,6 @@ class GeminiClient:
                 current_section = 'issues'
             elif 'improvement' in line_lower or 'suggestion' in line_lower:
                 current_section = 'improvements'
-            elif 'security' in line_lower:
-                current_section = 'security_concerns'
             elif 'performance' in line_lower:
                 current_section = 'performance_notes'
             
@@ -306,8 +300,6 @@ class GeminiClient:
                     current_priority = 'high'
                 elif '🟠' in line or 'medium' in line_lower:
                     current_priority = 'medium'
-                elif '🟢' in line or 'low' in line_lower:
-                    current_priority = 'low'
                 elif current_priority and line.strip() and line.strip().startswith(('-', '*', '•')):
                     sections["issues_by_priority"][current_priority].append(line.strip())
             
