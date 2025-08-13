@@ -228,32 +228,11 @@ async def call_tool(name: str, arguments: Dict[str, Any]) -> List[TextContent]:
                     text="❌ **오류:** 원본 코드와 피드백이 모두 필요합니다"
                 )]
             
-            from claude_client import get_claude_client
-            claude_client = await get_claude_client()
-            
-            improvement_result = await claude_client.improve_code(
-                original_code=original_code,
-                feedback=feedback,
-                language=arguments.get("language")
-            )
-            
-            if improvement_result["success"]:
-                response_parts = [
-                    "⚡ **코드 개선 완료**",
-                    f"🔤 언어: {improvement_result['language']}",
-                    "",
-                    "📝 **개선된 코드:**",
-                    "```" + improvement_result['language'],
-                    improvement_result['improved_code'],
-                    "```"
-                ]
-                
-                return [TextContent(type="text", text="\n".join(response_parts))]
-            else:
-                return [TextContent(
-                    type="text",
-                    text=f"❌ **개선 실패:** {improvement_result.get('error', '알 수 없는 오류')}"
-                )]
+            # TODO: Implement improvement logic with Gemini
+            return [TextContent(
+                type="text",
+                text="❌ **코드 개선 기능:** 현재 재구현 중입니다. Gemini 리뷰 기능을 사용해주세요."
+            )]
             
         elif name == "get_review_history":
             # Get review history

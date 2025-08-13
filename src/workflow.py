@@ -1,4 +1,4 @@
-"""Workflow manager for coordinating code implementation and review process."""
+"""Workflow manager for coordinating Gemini-based code review and enhancement process."""
 
 import logging
 from typing import Dict, Any, Optional, List
@@ -6,7 +6,6 @@ from datetime import datetime
 import json
 import re
 
-from claude_client import get_claude_client
 from gemini_client import get_gemini_client
 from config import settings
 
@@ -14,13 +13,11 @@ logger = logging.getLogger(__name__)
 
 
 class WorkflowManager:
-    """Manages the workflow between Claude code generation and Gemini review."""
+    """Manages the workflow for Gemini-based code review and enhancement."""
     
     def __init__(self):
         """Initialize workflow manager."""
         self.history: List[Dict[str, Any]] = []
-        self.auto_review = settings.auto_review
-        self.auto_improve = settings.auto_improve
         
     async def process_request(
         self,
@@ -43,7 +40,12 @@ class WorkflowManager:
         logger.info(f"Detected intent: {intent}")
         
         if intent == "implementation":
-            return await self.handle_implementation_request(user_message)
+            # For implementation, we expect the user to provide code to enhance
+            return {
+                "success": False,
+                "message": "Implementation requests now require providing existing code for enhancement. Please use the enhance_code_with_review tool with your code.",
+                "intent": intent
+            }
         elif intent == "review":
             return await self.handle_review_request(user_message)
         else:
@@ -54,89 +56,65 @@ class WorkflowManager:
                 "intent": intent
             }
     
-    async def handle_implementation_request(
+    async def handle_code_enhancement(
         self,
-        request: str,
+        code: str,
+        request: str = "",
         language: Optional[str] = None,
         requirements: Optional[List[str]] = None
     ) -> Dict[str, Any]:
         """
-        Handle code implementation request with automatic review and improvement.
+        Handle code enhancement with Gemini review and improvement suggestions.
         
         Args:
-            request: The implementation request
+            code: The code to enhance
+            request: Additional enhancement request (optional)
             language: Programming language (optional)
             requirements: Specific requirements (optional)
             
         Returns:
-            Complete workflow result
+            Enhancement result with review and suggestions
         """
         workflow_id = self._generate_workflow_id()
         result = {
             "workflow_id": workflow_id,
+            "original_code": code,
             "request": request,
             "stages": {}
         }
         
         try:
-            # Stage 1: Generate code with Claude
-            logger.info("Stage 1: Generating code with Claude")
-            claude_client = await get_claude_client()
-            generation_result = await claude_client.generate_code(
-                request=request,
+            # Stage 1: Review code with Gemini
+            logger.info("Stage 1: Reviewing code with Gemini")
+            gemini_client = await get_gemini_client()
+            
+            # Prepare focus areas based on requirements
+            focus_areas = requirements if requirements else ["security", "performance", "best-practices", "readability"]
+            
+            review_result = await gemini_client.review_code(
+                code=code,
                 language=language,
-                requirements=requirements
+                focus_areas=focus_areas
             )
             
-            if not generation_result["success"]:
+            if not review_result["success"]:
                 result["success"] = False
-                result["error"] = f"Code generation failed: {generation_result.get('error')}"
+                result["error"] = f"Code review failed: {review_result.get('error')}"
                 return result
                 
-            result["stages"]["generation"] = generation_result
-            generated_code = generation_result["code"]
-            detected_language = generation_result.get("language", "unknown")
+            result["stages"]["review"] = review_result
+            detected_language = review_result.get("language", language or "unknown")
             
-            # Stage 2: Review with Gemini (if auto_review is enabled)
-            if self.auto_review:
-                logger.info("Stage 2: Reviewing code with Gemini")
-                gemini_client = await get_gemini_client()
-                review_result = await gemini_client.review_code(
-                    code=generated_code,
-                    language=detected_language
-                )
-                
-                if not review_result["success"]:
-                    logger.warning(f"Review failed: {review_result.get('error')}")
-                    result["stages"]["review"] = review_result
-                else:
-                    result["stages"]["review"] = review_result
-                    
-                    # Stage 3: Improve based on feedback (if auto_improve is enabled)
-                    if self.auto_improve and self._has_significant_issues(review_result):
-                        logger.info("Stage 3: Improving code based on feedback")
-                        improvement_result = await claude_client.improve_code(
-                            original_code=generated_code,
-                            feedback=review_result["review"],
-                            language=detected_language
-                        )
-                        
-                        if improvement_result["success"]:
-                            result["stages"]["improvement"] = improvement_result
-                            
-                            # Stage 4: Final review of improved code
-                            logger.info("Stage 4: Final review of improved code")
-                            final_review = await gemini_client.compare_implementations(
-                                original_code=generated_code,
-                                improved_code=improvement_result["improved_code"],
-                                language=detected_language
-                            )
-                            result["stages"]["final_review"] = final_review
+            # Stage 2: Mark if improvement suggestions are recommended
+            if self._has_significant_issues(review_result):
+                logger.info("Stage 2: Significant issues found - improvement recommended")
+                result["improvement_suggestions"] = "Based on the review, consider addressing the CRITICAL and HIGH priority issues identified."
             
             # Prepare final result
             result["success"] = True
-            result["final_code"] = result["stages"].get("improvement", {}).get("improved_code", generated_code)
             result["language"] = detected_language
+            result["has_critical_issues"] = self._has_critical_issues(review_result)
+            result["improvement_recommended"] = self._has_significant_issues(review_result)
             
             # Store in history
             self._add_to_history(result)
@@ -144,7 +122,7 @@ class WorkflowManager:
             return result
             
         except Exception as e:
-            logger.error(f"Workflow error: {str(e)}")
+            logger.error(f"Enhancement workflow error: {str(e)}")
             result["success"] = False
             result["error"] = str(e)
             return result
@@ -287,6 +265,29 @@ class WorkflowManager:
         ]
         
         return any(keyword in review_text for keyword in critical_keywords + high_keywords)
+    
+    def _has_critical_issues(self, review_result: Dict[str, Any]) -> bool:
+        """Check if review found critical issues."""
+        if not review_result.get("success"):
+            return False
+        
+        # Check structured review for critical issues
+        structured_review = review_result.get("structured_review", {})
+        issues_by_priority = structured_review.get("issues_by_priority", {})
+        
+        # Check for CRITICAL priority issues
+        critical_issues = issues_by_priority.get("critical", [])
+        if critical_issues:
+            return True
+        
+        # Fallback to text-based detection
+        review_text = review_result.get("review", "").lower()
+        critical_keywords = [
+            "🔴", "critical", "security", "vulnerability", "unsafe", "injection",
+            "crash", "corruption", "data loss"
+        ]
+        
+        return any(keyword in review_text for keyword in critical_keywords)
     
     def _generate_workflow_id(self) -> str:
         """Generate unique workflow ID."""
