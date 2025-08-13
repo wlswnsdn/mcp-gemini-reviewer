@@ -5,6 +5,7 @@ mcp
 
 # Async support
 aiohttp
+requests  # GitHub API calls
 
 # Environment and config
 python-dotenv

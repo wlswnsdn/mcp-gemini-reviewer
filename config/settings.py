@@ -2,6 +2,7 @@
 
 import os
 from pathlib import Path
+from typing import Optional
 from pydantic_settings import BaseSettings
 from pydantic import Field
 
@@ -24,7 +25,11 @@ class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
     
     # API Keys
-    gemini_api_key: str = Field(..., env="GEMINI_API_KEY") 
+    gemini_api_key: str = Field(..., env="GEMINI_API_KEY")
+    github_token: Optional[str] = Field(default=None, env="GITHUB_TOKEN")
+    
+    # GitHub Configuration
+    default_github_repo: Optional[str] = Field(default=None, env="DEFAULT_GITHUB_REPO") 
     
     # Model Configuration
     gemini_model: str = Field(
