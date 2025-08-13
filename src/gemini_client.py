@@ -162,6 +162,84 @@ Please provide:
                 "error": str(e)
             }
     
+    async def generate_improvement_suggestions(
+        self,
+        code: str,
+        review: str,
+        language: Optional[str] = None,
+        requirements: Optional[List[str]] = None
+    ) -> Dict[str, Any]:
+        """
+        Generate specific improvement suggestions based on code review.
+        
+        Args:
+            code: The original code
+            review: The review feedback
+            language: Programming language (optional)
+            requirements: Additional requirements (optional)
+            
+        Returns:
+            Dict containing improvement suggestions
+        """
+        try:
+            # Build the improvement prompt
+            prompt_parts = [
+                "You are an expert code improvement consultant. Based on the code review provided, generate specific, actionable improvement suggestions.",
+                f"\nOriginal Code:",
+                f"```{language or ''}",
+                code,
+                "```",
+                f"\nCode Review:",
+                review,
+                "\nPlease provide:",
+                "1. **Priority-based Improvement Plan** - Focus on CRITICAL and HIGH priority issues first",
+                "2. **Specific Code Changes** - Exact code snippets that should be modified",
+                "3. **Implementation Steps** - Step-by-step guide for applying improvements",
+                "4. **Validation Methods** - How to verify the improvements work correctly"
+            ]
+            
+            if requirements:
+                prompt_parts.extend([
+                    "\nAdditional Requirements:",
+                    *[f"- {req}" for req in requirements]
+                ])
+                
+            prompt_parts.extend([
+                "\nFormat your response with clear sections and provide concrete, implementable solutions.",
+                "Focus on the most impactful improvements that address security, performance, and maintainability concerns."
+            ])
+            
+            prompt = "\n".join(prompt_parts)
+            
+            logger.info(f"Generating improvement suggestions with Gemini ({self.model_name})")
+            try:
+                response = await self._generate_content_async(self.model, prompt)
+            except (exceptions.ResourceExhausted, exceptions.ServiceUnavailable) as e:
+                logger.warning(f"Primary model unavailable, using fallback")
+                response = await self._generate_content_async(self.fallback_model, prompt)
+            
+            suggestions_text = response.text
+            
+            # Parse suggestions into structured format
+            suggestions_data = self._parse_improvement_suggestions(suggestions_text)
+            
+            return {
+                "success": True,
+                "suggestions": suggestions_text,
+                "structured_suggestions": suggestions_data,
+                "language": language or "auto-detected",
+                "model": self.model_name,
+                "based_on_review": True
+            }
+            
+        except Exception as e:
+            logger.error(f"Error generating improvement suggestions: {str(e)}")
+            return {
+                "success": False,
+                "error": str(e),
+                "code_snippet": code[:200] + "..." if len(code) > 200 else code
+            }
+    
     async def _generate_content_async(self, model: GenerativeModel, prompt: str):
         """
         Generate content using Gemini model asynchronously.
@@ -235,6 +313,49 @@ Please provide:
             
             elif current_section and line.strip():
                 if current_section == 'overall_assessment':
+                    sections[current_section] += line + '\n'
+                elif line.strip().startswith(('-', '*', '•', '1.', '2.', '3.')):
+                    sections[current_section].append(line.strip())
+        
+        return sections
+    
+    def _parse_improvement_suggestions(self, suggestions_text: str) -> Dict[str, Any]:
+        """
+        Parse improvement suggestions text into structured format.
+        
+        Args:
+            suggestions_text: Raw suggestions text from Gemini
+            
+        Returns:
+            Structured suggestions data
+        """
+        sections = {
+            "priority_plan": [],
+            "code_changes": [],
+            "implementation_steps": [],
+            "validation_methods": [],
+            "summary": ""
+        }
+        
+        current_section = None
+        lines = suggestions_text.split('\n')
+        
+        for line in lines:
+            line_lower = line.lower().strip()
+            
+            if 'priority' in line_lower and 'plan' in line_lower:
+                current_section = 'priority_plan'
+            elif 'code changes' in line_lower or 'specific' in line_lower:
+                current_section = 'code_changes'
+            elif 'implementation' in line_lower and 'steps' in line_lower:
+                current_section = 'implementation_steps'
+            elif 'validation' in line_lower or 'verify' in line_lower:
+                current_section = 'validation_methods'
+            elif 'summary' in line_lower:
+                current_section = 'summary'
+            
+            elif current_section and line.strip():
+                if current_section == 'summary':
                     sections[current_section] += line + '\n'
                 elif line.strip().startswith(('-', '*', '•', '1.', '2.', '3.')):
                     sections[current_section].append(line.strip())
