@@ -11,17 +11,16 @@ class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
     
     # API Keys
-    anthropic_api_key: str = Field(..., env="ANTHROPIC_API_KEY")
     gemini_api_key: str = Field(..., env="GEMINI_API_KEY") 
     
     # Model Configuration
-    claude_model: str = Field(
-        default="claude-3-5-sonnet-20241022", 
-        env="CLAUDE_MODEL"
-    )
     gemini_model: str = Field(
         default="gemini-2.0-flash-001",
         env="GEMINI_MODEL"
+    )
+    gemini_model_fallback: str = Field(
+        default="gemini-2.0-flash-001",
+        env="GEMINI_MODEL_FALLBACK"
     )
     
     # Server Configuration

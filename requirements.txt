@@ -1,5 +1,4 @@
 # Core dependencies
-anthropic
 google-generativeai  # Gemini API client
 google-api-core      # For exception handling
 mcp
