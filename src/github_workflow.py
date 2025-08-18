@@ -299,7 +299,10 @@ class GitHubIssueWorkflow:
             logger.info(f"기준 브랜치 '{base_branch}' 최신화 중")
             pull_result = self._run_git_command(["pull", "origin", base_branch])
             if not pull_result["success"]:
-                logger.warning(f"기준 브랜치 풀 실패 (계속 진행): {pull_result['error']}")
+                return {
+                    "success": False,
+                    "error": f"기준 브랜치 최신화 실패: {pull_result['error']}. 네트워크 연결과 GitHub 권한을 확인해주세요."
+                }
             
             # 브랜치 존재 여부 확인
             branch_exists = self._run_git_command(["show-ref", "--verify", f"refs/heads/{branch_name}"])
