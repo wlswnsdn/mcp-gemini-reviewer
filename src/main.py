@@ -66,56 +66,11 @@ ENHANCE_CODE_TOOL = Tool(
     }
 )
 
-REVIEW_CODE_TOOL = Tool(
-    name="gemini_analyze",
-    description="Review code quality with priority-based analysis using Gemini AI",
-    inputSchema={
-        "type": "object",
-        "properties": {
-            "code": {
-                "type": "string",
-                "description": "The code to review"
-            },
-            "language": {
-                "type": "string",
-                "description": "Programming language (optional)",
-                "default": "auto-detect"
-            },
-            "focus_areas": {
-                "type": "array",
-                "items": {"type": "string"},
-                "description": "Specific areas to focus on (e.g., security, performance)",
-                "default": ["security", "performance", "best-practices", "readability"]
-            }
-        },
-        "required": ["code"]
-    }
-)
-
-GET_HISTORY_TOOL = Tool(
-    name="gemini_history",
-    description="Get the history of code reviews and improvements",
-    inputSchema={
-        "type": "object",
-        "properties": {
-            "limit": {
-                "type": "integer",
-                "description": "Number of recent entries to retrieve",
-                "default": 10
-            }
-        }
-    }
-)
-
 
 @app.list_tools()
 async def list_tools() -> List[Tool]:
     """List all available tools."""
-    return [
-        ENHANCE_CODE_TOOL,
-        REVIEW_CODE_TOOL,
-        GET_HISTORY_TOOL
-    ]
+    return [ENHANCE_CODE_TOOL]
 
 
 @app.call_tool()
@@ -124,7 +79,7 @@ async def call_tool(name: str, arguments: Dict[str, Any]) -> List[TextContent]:
     try:
         logger.info(f"Tool called: {name} with arguments: {arguments}")
         workflow_manager = await get_workflow_manager()
-        
+
         if name == "gemini_review":
             # Handle code enhancement request
             code = arguments.get("code", "")
@@ -133,14 +88,14 @@ async def call_tool(name: str, arguments: Dict[str, Any]) -> List[TextContent]:
                     type="text",
                     text="❌ **오류:** 개선할 코드가 제공되지 않았습니다"
                 )]
-            
+
             result = await workflow_manager.handle_code_enhancement(
                 code=code,
                 request=arguments.get("request", ""),
                 language=arguments.get("language"),
                 requirements=arguments.get("requirements")
             )
-            
+
             if result["success"]:
                 response_parts = [
                     f"⚡ **코드 개선 분석 완료**",
@@ -150,7 +105,7 @@ async def call_tool(name: str, arguments: Dict[str, Any]) -> List[TextContent]:
                     f"💡 개선 권장: {'예' if result['improvement_recommended'] else '아니오'}",
                     ""
                 ]
-                
+
                 # Add review information
                 stages = result.get('stages', {})
                 if 'review' in stages:
@@ -159,112 +114,31 @@ async def call_tool(name: str, arguments: Dict[str, Any]) -> List[TextContent]:
                         "🔍 **상세 리뷰:**",
                         review_text
                     ])
-                
+
                 if result.get('improvement_suggestions'):
                     response_parts.extend([
                         "",
                         "💡 **개선 제안:**",
                         result['improvement_suggestions']
                     ])
-                
+
                 return [TextContent(type="text", text="\n".join(response_parts))]
             else:
                 return [TextContent(
                     type="text",
                     text=f"❌ **코드 개선 분석 실패:** {result.get('error', '알 수 없는 오류')}"
                 )]
-            
-        elif name == "gemini_analyze":
-            # Handle direct code review
-            code = arguments.get("code", "")
-            if not code:
-                return [TextContent(
-                    type="text",
-                    text="❌ **오류:** 리뷰할 코드가 제공되지 않았습니다"
-                )]
-            
-            # Use Gemini client directly for review
-            from gemini_client import get_gemini_client
-            gemini_client = await get_gemini_client()
-            
-            review_result = await gemini_client.review_code(
-                code=code,
-                language=arguments.get("language"),
-                focus_areas=arguments.get("focus_areas")
-            )
-            
-            if review_result["success"]:
-                # Parse structured review for better presentation
-                structured_review = review_result.get("structured_review", {})
-                issues_by_priority = structured_review.get("issues_by_priority", {})
-                
-                response_parts = [
-                    f"🔍 **코드 품질 리뷰 완료**",
-                    f"🔤 언어: {review_result['language']}",
-                    f"📏 코드 길이: {review_result['code_length']}자",
-                    ""
-                ]
-                
-                # Add priority-based issue summary
-                critical_count = len(issues_by_priority.get("critical", []))
-                high_count = len(issues_by_priority.get("high", []))
-                medium_count = len(issues_by_priority.get("medium", []))
-                low_count = len(issues_by_priority.get("low", []))
-                
-                if any([critical_count, high_count, medium_count, low_count]):
-                    response_parts.extend([
-                        "📊 **이슈 요약:**",
-                        f"🔴 CRITICAL: {critical_count}개",
-                        f"🟡 HIGH: {high_count}개", 
-                        f"🟠 MEDIUM: {medium_count}개",
-                        f"🟢 LOW: {low_count}개",
-                        ""
-                    ])
-                
-                response_parts.extend([
-                    "📋 **상세 리뷰:**",
-                    review_result['review']
-                ])
-                
-                return [TextContent(type="text", text="\n".join(response_parts))]
-            else:
-                return [TextContent(
-                    type="text",
-                    text=f"❌ **리뷰 실패:** {review_result.get('error', '알 수 없는 오류')}"
-                )]
-            
-        elif name == "gemini_history":
-            # Get review history
-            limit = arguments.get("limit", 10)
-            history = workflow_manager.get_history(limit)
-            
-            if not history:
-                return [TextContent(
-                    type="text",
-                    text="📊 **리뷰 히스토리:** 기록이 없습니다"
-                )]
-            
-            response_parts = [f"📊 **리뷰 히스토리 (최근 {len(history)}개 항목):**", ""]
-            
-            for i, entry in enumerate(reversed(history), 1):
-                status = "✅" if entry['success'] else "❌"
-                response_parts.append(
-                    f"{i}. {status} [{entry['timestamp'][:19]}] "
-                    f"{entry.get('language', '알 수 없음')} - {entry['request'][:50]}..."
-                )
-            
-            return [TextContent(type="text", text="\n".join(response_parts))]
-            
+
         else:
             return [TextContent(
                 type="text",
                 text=f"❌ **알 수 없는 도구:** {name}"
             )]
-            
+
     except Exception as e:
         logger.error(f"Error in tool {name}: {str(e)}")
         return [TextContent(
-            type="text", 
+            type="text",
             text=f"❌ **도구 실행 오류 {name}:** {str(e)}"
         )]
 

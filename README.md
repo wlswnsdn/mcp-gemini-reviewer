@@ -1,65 +1,38 @@
 # Gemini Review MCP 서버
 
-Claude MCP를 활용해 다른 프로젝트에서 코드 구현 요청 → Claude 코드 생성 → Gemini 리뷰 → 피드백 반영의 자동화된 워크플로우를 제공하는 MCP 서버입니다.
+Gemini AI를 활용한 코드 리뷰 및 개선 제안 MCP 서버입니다.
 
 ## 🎯 주요 기능
 
-### 자동화된 워크플로우
-1. **Claude로 코드 생성** - 사용자 요청을 바탕으로 고품질 코드 구현
-2. **Gemini로 우선순위 기반 리뷰** - 보안, 성능, 코드 품질을 4단계 우선순위로 분석
-3. **지능적 개선 판단** - CRITICAL/HIGH 우선순위 이슈 발견 시 자동 개선 권장
-4. **최종 결과 제공** - 구조화된 리뷰와 함께 개선된 코드 반환
+### 자동화된 코드 분석
+1. **Gemini로 우선순위 기반 리뷰** - 보안, 성능, 코드 품질을 4단계 우선순위로 분석
+2. **지능적 개선 판단** - CRITICAL/HIGH 우선순위 이슈 발견 시 자동 개선 제안 생성
+3. **구조화된 결과 제공** - 우선순위별 이슈 분류와 상세 개선 제안
 
 ### 🎯 우선순위 기반 리뷰 시스템
 - 🔴 **CRITICAL**: 보안 취약점, 데이터 손실 위험, 시스템 크래시
-- 🟡 **HIGH**: 성능 문제, 유지보수성 문제, 로직 오류  
+- 🟡 **HIGH**: 성능 문제, 유지보수성 문제, 로직 오류
 - 🟠 **MEDIUM**: 코드 스타일 문제, 경미한 비효율성, 검증 누락
 - 🟢 **LOW**: 문서화, 네이밍 개선, 경미한 최적화
 
-### 지능적 의도 판단
-- **구현 요청**: "FastAPI로 인증 API 만들어줘" → 전체 워크플로우 실행
-- **리뷰 요청**: "이 코드 리뷰해줘" → Gemini 리뷰만 실행  
-- **일반 질문**: "JWT가 뭐야?" → MCP 도구 사용 안함
+## 🛠️ MCP 도구
 
-## 🛠️ MCP 도구들
-
-### `request_code_implementation`
-코드 구현 요청을 처리하는 메인 워크플로우
-```json
-{
-  "request": "FastAPI로 JWT 인증 API 구현해줘",
-  "language": "python",
-  "requirements": ["보안", "토큰 만료 처리"]
-}
-```
-
-### `review_code_with_gemini`  
-Gemini AI를 사용한 코드 리뷰
+### `gemini_review`
+코드 개선 분석 및 제안 생성
 ```json
 {
   "code": "def hello(): print('hello')",
+  "request": "보안과 성능 개선",
   "language": "python",
-  "focus_areas": ["security", "performance"]
+  "requirements": ["security", "performance", "best-practices", "readability"]
 }
 ```
 
-### `improve_code_with_feedback`
-리뷰 피드백을 바탕으로 코드 개선
-```json
-{
-  "original_code": "원본 코드",
-  "feedback": "보안 취약점을 수정하고 성능을 개선하세요",
-  "language": "python"  
-}
-```
-
-### `get_review_history`
-워크플로우 실행 히스토리 조회
-```json
-{
-  "limit": 10
-}
-```
+**파라미터:**
+- `code` (필수): 분석할 코드
+- `request` (선택): 추가 요청사항
+- `language` (선택): 프로그래밍 언어 (기본값: auto-detect)
+- `requirements` (선택): 집중 분석 영역 배열 (기본값: security, performance, best-practices, readability)
 
 ## 🚀 설치 및 설정
 
@@ -83,15 +56,10 @@ cp .env.example .env
 `.env` 파일 편집:
 ```bash
 # API Keys
-ANTHROPIC_API_KEY=your_anthropic_api_key_here
 GEMINI_API_KEY=your_gemini_api_key_here
 
-# Model Configuration  
-CLAUDE_MODEL=claude-opus-4-1-20250805
+# Model Configuration
 GEMINI_MODEL=gemini-2.5-pro-preview-06-05
-
-# Fallback models
-CLAUDE_MODEL_FALLBACK=claude-sonnet-4-20250131
 GEMINI_MODEL_FALLBACK=gemini-2.5-flash-preview-05-20
 ```
 
@@ -122,23 +90,12 @@ claude mcp add gemini-review stdio python src/main.py
 
 ## 📋 사용법
 
-### 코드 구현 요청
-```
-"FastAPI로 JWT 토큰 기반 사용자 인증 API를 만들어줘"
-```
+Claude Code에서 자동으로 `gemini_review` 도구를 호출합니다:
 
-**결과:**
-- ✅ Claude가 코드 생성
-- 🔍 Gemini가 자동 리뷰
-- ⚡ 피드백 기반 개선 (필요시)
-- 📝 최종 코드 반환
-
-### 코드 리뷰 요청
 ```
-"이 코드 리뷰해줘
+"이 코드 개선해줘
 ```python
 def login(username, password):
-    # 간단한 로그인 함수
     if username == "admin" and password == "1234":
         return True
     return False
@@ -146,23 +103,23 @@ def login(username, password):
 ```
 
 **결과:**
-- 🔍 Gemini가 코드 품질, 보안 등을 분석
-- 📋 우선순위별 구조화된 리뷰 결과 제공:
+- 🔍 Gemini가 코드 품질, 보안, 성능 등을 분석
+- 📋 우선순위별 구조화된 리뷰 결과:
   - 🔴 **CRITICAL**: 보안 취약점, 시스템 크래시 위험
   - 🟡 **HIGH**: 성능 문제, 로직 오류
-  - 🟠 **MEDIUM**: 코드 스타일, 경미한 비효율성  
+  - 🟠 **MEDIUM**: 코드 스타일, 경미한 비효율성
   - 🟢 **LOW**: 문서화, 네이밍 개선
+- 💡 CRITICAL/HIGH 이슈가 있으면 자동으로 개선 제안 생성
 
 ## 🎛️ 환경변수 설정
 
 | 변수명 | 설명 | 기본값 |
 |--------|------|--------|
-| `ANTHROPIC_API_KEY` | Claude API 키 | 필수 |
 | `GEMINI_API_KEY` | Gemini API 키 | 필수 |
-| `CLAUDE_MODEL` | 메인 Claude 모델 | `claude-3-5-sonnet-20241022` |
 | `GEMINI_MODEL` | 메인 Gemini 모델 | `gemini-2.0-flash-001` |
-| `AUTO_REVIEW` | 자동 리뷰 활성화 | `true` |
-| `AUTO_IMPROVE` | 자동 개선 활성화 | `true` |
+| `GEMINI_MODEL_FALLBACK` | Fallback Gemini 모델 | `gemini-2.0-flash-001` |
+| `MCP_SERVER_NAME` | MCP 서버 이름 | `gemini-review` |
+| `MCP_SERVER_VERSION` | MCP 서버 버전 | `0.1.0` |
 | `MAX_TOKENS` | 최대 토큰 수 | `4096` |
 | `TEMPERATURE` | 생성 온도 | `0.7` |
 
@@ -172,20 +129,17 @@ def login(username, password):
 사용자 요청 → Claude Code → MCP Server
                               ↓
                     WorkflowManager
-                    (의도 판단 및 워크플로우 조정)
+                    (워크플로우 조정)
                               ↓
-                    ┌─────────┼─────────┐
-                    ↓         ↓         ↓
-              ClaudeClient GeminiClient 기타 도구들
-                    ↓         ↓         ↓
-                Claude API  Gemini API  로컬 처리
+                        GeminiClient
+                              ↓
+                         Gemini API
 ```
 
 ### 핵심 컴포넌트
 - **`main.py`**: MCP 서버 진입점, 도구 등록 및 요청 처리
-- **`workflow.py`**: 워크플로우 관리, 의도 판단
-- **`claude_client.py`**: Claude API 클라이언트, 코드 생성 담당
-- **`gemini_client.py`**: Gemini API 클라이언트, 코드 리뷰 담당
+- **`workflow.py`**: 워크플로우 관리, 리뷰/개선 제안 조율
+- **`gemini_client.py`**: Gemini API 클라이언트, 코드 리뷰 및 개선 제안 담당
 - **`config/settings.py`**: 환경변수 기반 설정 관리
 
 ## 🤔 문제 해결
@@ -218,14 +172,14 @@ ModuleNotFoundError: No module named 'google.generativeai'
 ### 추가 가능한 기능
 - **우선순위별 자동 처리**: CRITICAL은 즉시 차단, HIGH는 경고, MEDIUM/LOW는 제안
 - **커스텀 우선순위 규칙**: 프로젝트별 맞춤 우선순위 기준 설정
-- 다른 AI 모델 지원 (GPT, Claude Haiku 등)
+- 다른 AI 모델 지원 (GPT 등)
 - 코드 테스트 자동 생성
 - 보안 스캔 통합 (CRITICAL 우선순위 자동 감지)
 - 성능 벤치마크 자동 실행 (HIGH 우선순위 성능 이슈 검증)
 - 다양한 프로그래밍 언어 지원 확장
 
 ### 커스터마이징
-- `workflow.py`의 의도 판단 로직 수정
+- `workflow.py`의 워크플로우 로직 수정
 - `settings.py`에서 추가 설정 옵션 구현
 - 새로운 MCP 도구 추가
 
@@ -235,4 +189,4 @@ MIT License
 
 ---
 
-🚀 **Claude + Gemini의 강력한 조합으로 더 나은 코드를 만들어보세요!**
+🚀 **Gemini AI로 더 나은 코드를 만들어보세요!**
