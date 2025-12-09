@@ -5,9 +5,14 @@ Gemini AI를 활용한 코드 리뷰 및 개선 제안 MCP 서버입니다.
 ## 🎯 주요 기능
 
 ### 자동화된 코드 분석
-1. **Gemini로 우선순위 기반 리뷰** - 보안, 성능, 코드 품질을 4단계 우선순위로 분석
+1. **Gemini로 우선순위 기반 리뷰** - 성능, 유지보수성, 가독성 중심의 코드 분석
 2. **지능적 개선 판단** - CRITICAL/HIGH 우선순위 이슈 발견 시 자동 개선 제안 생성
 3. **구조화된 결과 제공** - 우선순위별 이슈 분류와 상세 개선 제안
+
+### 📊 분석 우선순위
+1. **성능 (Performance)** - 실행 속도, 메모리 사용, 알고리즘 효율성
+2. **유지보수성 (Maintainability)** - 코드 구조, 모듈화, 확장 가능성
+3. **가독성 (Readability)** - 코드 명확성, 네이밍, 주석
 
 ### 🎯 우선순위 기반 리뷰 시스템
 - 🔴 **CRITICAL**: 보안 취약점, 데이터 손실 위험, 시스템 크래시
@@ -19,20 +24,24 @@ Gemini AI를 활용한 코드 리뷰 및 개선 제안 MCP 서버입니다.
 
 ### `gemini_review`
 코드 개선 분석 및 제안 생성
+
+성능, 유지보수성, 가독성을 중심으로 코드를 자동 분석합니다.
+
 ```json
 {
   "code": "def hello(): print('hello')",
-  "request": "보안과 성능 개선",
-  "language": "python",
-  "requirements": ["security", "performance", "best-practices", "readability"]
+  "language": "python"
 }
 ```
 
 **파라미터:**
 - `code` (필수): 분석할 코드
-- `request` (선택): 추가 요청사항
 - `language` (선택): 프로그래밍 언어 (기본값: auto-detect)
-- `requirements` (선택): 집중 분석 영역 배열 (기본값: security, performance, best-practices, readability)
+
+**고정 분석 기준:**
+- 성능 (Performance)
+- 유지보수성 (Maintainability)
+- 가독성 (Readability)
 
 ## 🚀 설치 및 설정
 
@@ -102,14 +111,14 @@ def login(username, password):
 ```"
 ```
 
+**분석 내용:**
+- 🎯 **성능**: 실행 속도, 메모리 사용, 알고리즘 효율성
+- 🔧 **유지보수성**: 코드 구조, 모듈화, 확장 가능성
+- 📖 **가독성**: 코드 명확성, 네이밍, 주석
+
 **결과:**
-- 🔍 Gemini가 코드 품질, 보안, 성능 등을 분석
-- 📋 우선순위별 구조화된 리뷰 결과:
-  - 🔴 **CRITICAL**: 보안 취약점, 시스템 크래시 위험
-  - 🟡 **HIGH**: 성능 문제, 로직 오류
-  - 🟠 **MEDIUM**: 코드 스타일, 경미한 비효율성
-  - 🟢 **LOW**: 문서화, 네이밍 개선
-- 💡 CRITICAL/HIGH 이슈가 있으면 자동으로 개선 제안 생성
+- 📋 우선순위별 구조화된 리뷰 결과 (CRITICAL/HIGH/MEDIUM/LOW)
+- 💡 CRITICAL/HIGH 이슈 발견 시 자동으로 개선 제안 생성
 
 ## 🎛️ 환경변수 설정
 
