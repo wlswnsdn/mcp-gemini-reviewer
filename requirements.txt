@@ -5,7 +5,6 @@ mcp
 
 # Async support
 aiohttp
-requests  # GitHub API calls
 
 # Environment and config
 python-dotenv
@@ -13,4 +12,3 @@ python-dotenv
 # Utility
 pydantic
 pydantic-settings  # For BaseSettings
-rich  # for better terminal output
